@@ -1,6 +1,6 @@
 // Frontend de vote décentralisé basé sur le style de tp_reponse/tp5/index.html et app.js
 // Contrat : DecentralizedVoting (projet_corrige.sol)
-const CONTRACT_ADDRESS = '0x2e0Eb4a11937ff9305952F6B462450276e95Da8a';
+const CONTRACT_ADDRESS = '0xC85350526D7C4bC61cC88597C144Ce8e2aaED851';
 
 const ABI = [
     'function getProposalCount() view returns (uint256)',

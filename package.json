@@ -1,0 +1,28 @@
+{
+  "name": "blockchain",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Johary-dev/blockchain.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Johary-dev/blockchain/issues"
+  },
+  "homepage": "https://github.com/Johary-dev/blockchain#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.2",
+    "dotenv": "^17.4.2",
+    "hardhat": "^2.22.19"
+  }
+}
