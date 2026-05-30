@@ -1,6 +1,6 @@
 // Frontend de vote décentralisé basé sur le style de tp_reponse/tp5/index.html et app.js
 // Contrat : DecentralizedVoting (projet_corrige.sol)
-const CONTRACT_ADDRESS = '0xC85350526D7C4bC61cC88597C144Ce8e2aaED851';
+const CONTRACT_ADDRESS = '0xc4194b1909f6469F6Bf92d937258fC7E91317d6c';
 
 const ABI = [
     'function getProposalCount() view returns (uint256)',
@@ -18,6 +18,7 @@ let provider;
 let signer;
 let contract;
 let userAddress;
+let connectionPromise = null;
 
 const statusEl = document.getElementById('status');
 const spanAddr = document.getElementById('spanAddr');
@@ -50,6 +51,65 @@ function formatSeconds(seconds) {
     return parts.join(' ');
 }
 
+function getFriendlyErrorMessage(error, fallbackMessage) {
+    const rawMessage = error?.reason || error?.data?.message || error?.message || String(error);
+
+    if (typeof rawMessage !== 'string') {
+        return fallbackMessage;
+    }
+
+    if (rawMessage.includes('You have already voted')) {
+        return 'Vous avez déjà voté. Un seul vote est autorisé par adresse.';
+    }
+    if (rawMessage.includes('Invalid proposal id')) {
+        return 'Identifiant de proposition invalide. Rafraîchissez la page et réessayez.';
+    }
+    if (rawMessage.includes('Voting is already closed')) {
+        return 'Le vote est déjà clôturé. Il n’est plus possible de voter.';
+    }
+    if (rawMessage.includes('Voting deadline has passed')) {
+        return 'La période de vote est terminée. Votre vote ne peut plus être pris en compte.';
+    }
+    return `${fallbackMessage} (${rawMessage})`;
+}
+
+async function connectMetaMask() {
+    if (connectionPromise) {
+        return connectionPromise;
+    }
+
+    btnConnect.disabled = true;
+    connectionPromise = (async () => {
+        try {
+            provider = new ethers.BrowserProvider(window.ethereum);
+            await provider.send('eth_requestAccounts', []);
+            signer = await provider.getSigner();
+            userAddress = await signer.getAddress();
+
+            await verifyNetwork();
+            await initializeContract();
+            await updateContractInfo();
+
+            spanAddr.textContent = formatAddress(userAddress);
+            btnRefresh.disabled = false;
+            setStatus('Connexion réussie. Vous pouvez maintenant voter.', 'success');
+        } catch (error) {
+            const errorMessage = error?.code === 4001
+                ? 'Connexion annulée dans MetaMask. Autorisez l\'accès au compte pour continuer.'
+                : error?.code === -32002 || (error?.message && error.message.includes('already pending'))
+                    ? 'Une demande de connexion est déjà en attente dans MetaMask. Vérifiez la fenêtre MetaMask et confirmez ou annulez la demande.'
+                    : `Impossible de se connecter à MetaMask : ${getFriendlyErrorMessage(error, error.message || 'Erreur inconnue.')}`;
+            setStatus(errorMessage, 'error');
+            throw error;
+        } finally {
+            btnConnect.disabled = false;
+            connectionPromise = null;
+        }
+    })();
+
+    return connectionPromise;
+}
+
 async function verifyNetwork() {
     if (!provider) return;
     const network = await provider.getNetwork();
@@ -59,7 +119,7 @@ async function verifyNetwork() {
     }
     spanNetwork.textContent = `${network.name ?? 'unknown'} (chainId=${chainIdNum})`;
     if (Number(chainIdNum) !== 11155111) {
-        setStatus(`⚠️ Veuillez vous connecter au réseau Sepolia dans MetaMask (detecté: chainId=${network.chainId}).`, 'error');
+        setStatus(`Veuillez vous connecter au réseau Sepolia dans MetaMask (detecté: chainId=${network.chainId}).`, 'error');
         throw new Error('Réseau incorrect');
     }
 }
@@ -81,7 +141,7 @@ async function updateContractInfo() {
 
         await loadProposals(proposalCount, votingOpen, hasVoted);
     } catch (error) {
-        setStatus(`❌ Impossible de récupérer les informations du contrat : ${error.message}`, 'error');
+        setStatus(`Impossible de récupérer les informations du contrat : ${error.message}`, 'error');
     }
 }
 
@@ -131,50 +191,47 @@ async function loadProposals(proposalCount, votingOpen, hasVoted) {
 
 async function voteForProposal(proposalId) {
     try {
-        setStatus('⏳ Transaction en préparation... Confirmez dans MetaMask.', 'pending');
+        setStatus('Transaction en préparation... Confirmez-la dans MetaMask.', 'pending');
         const tx = await contract.vote(proposalId);
-        setStatus(`⏳ Transaction envoyée — TxHash: ${tx.hash}\nAttente de confirmation...`, 'pending');
+        setStatus(`Transaction envoyée — TxHash: ${tx.hash}\nAttente de confirmation...`, 'pending');
         await tx.wait();
-        setStatus('✅ Vote enregistré avec succès.', 'success');
+        setStatus('Vote enregistré avec succès.', 'success');
         await updateContractInfo();
     } catch (error) {
-        setStatus(`❌ Erreur de vote : ${error.message}`, 'error');
+        const errorMessage = error?.code === 4001
+            ? 'Transaction annulée dans MetaMask. Votre vote n\'a pas été pris en compte.'
+            : getFriendlyErrorMessage(error, 'Impossible d\'enregistrer le vote. Réessayez plus tard.');
+        setStatus(errorMessage, 'error');
     }
 }
 
 btnConnect.addEventListener('click', async () => {
     if (!window.ethereum) {
-        setStatus('❌ MetaMask non détecté. Installez MetaMask et rechargez la page.', 'error');
+        setStatus('MetaMask introuvable. Installez l\'extension MetaMask puis rechargez cette page.', 'error');
         return;
     }
     if (CONTRACT_ADDRESS === '0xREPLACE_WITH_YOUR_VOTING_CONTRACT_ADDRESS') {
-        setStatus('❌ Remplacez CONTRACT_ADDRESS dans app.js par l\'adresse de votre contrat DecentralizedVoting.', 'error');
+        setStatus('Adresse du contrat manquante : mettez à jour CONTRACT_ADDRESS dans front/app.js.', 'error');
         return;
     }
 
+    if (connectionPromise) {
+        setStatus('Connexion déjà demandée. Vérifiez la fenêtre MetaMask et confirmez ou annulez la demande.', 'pending');
+    } else {
+        setStatus('Connexion à MetaMask en cours...', 'pending');
+    }
+
     try {
-        setStatus('⏳ Connexion à MetaMask...', 'pending');
-        provider = new ethers.BrowserProvider(window.ethereum);
-        await provider.send('eth_requestAccounts', []);
-        signer = await provider.getSigner();
-        userAddress = await signer.getAddress();
-
-        await verifyNetwork();
-        await initializeContract();
-        await updateContractInfo();
-
-        spanAddr.textContent = formatAddress(userAddress);
-        btnRefresh.disabled = false;
-        setStatus('✅ Connecté et prêt à voter !', 'success');
+        await connectMetaMask();
     } catch (error) {
-        setStatus(`❌ Erreur : ${error.message}`, 'error');
+        // Le message d'erreur est déjà affiché dans connectMetaMask().
     }
 });
 
 btnRefresh.addEventListener('click', async () => {
-    setStatus('⏳ Actualisation des propositions...', 'pending');
+    setStatus('Actualisation des propositions...', 'pending');
     await updateContractInfo();
-    setStatus('✅ Propositions mises à jour.', 'success');
+    setStatus('Propositions mises à jour.', 'success');
 });
 
 window.addEventListener('DOMContentLoaded', () => {
