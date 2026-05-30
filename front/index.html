@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vote décentralisé - Mini Projet Blockchain</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --text: #172033;
+      --muted: #607086;
+      --line: #dce4ef;
+      --primary: #047481;
+      --primary-dark: #035b65;
+      --danger: #b42318;
+      --ok: #15803d;
+      --soft: #eef7f8;
+      --shadow: 0 12px 28px rgba(23, 32, 51, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    header {
+      background: #0b1f33;
+      color: #ffffff;
+      padding: 32px 20px;
+    }
+
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 760px;
+      margin: 12px 0 0;
+      color: #d6e3ef;
+      font-size: 17px;
+    }
+
+    main {
+      padding: 28px 0 48px;
+    }
+
+    section {
+      margin-top: 22px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 22px;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    input {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font: inherit;
+      color: var(--text);
+      background: #ffffff;
+    }
+
+    button {
+      min-height: 42px;
+      border: 0;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font: inherit;
+      font-weight: 700;
+      color: #ffffff;
+      background: var(--primary);
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: var(--primary-dark);
+    }
+
+    button.secondary {
+      color: var(--primary);
+      background: var(--soft);
+      border: 1px solid #b8dde2;
+    }
+
+    button.secondary:hover {
+      background: #dff0f2;
+    }
+
+    button.danger {
+      background: var(--danger);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .status {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfdff;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .metric strong {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .proposal-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .proposal {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #ffffff;
+    }
+
+    .proposal-title {
+      font-weight: 800;
+    }
+
+    .votes {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .notice {
+      margin-top: 14px;
+      border-left: 4px solid var(--primary);
+      background: var(--soft);
+      padding: 12px;
+      color: #164e57;
+    }
+
+    .message {
+      min-height: 24px;
+      margin-top: 12px;
+      font-weight: 650;
+    }
+
+    .message.ok {
+      color: var(--ok);
+    }
+
+    .message.error {
+      color: var(--danger);
+    }
+
+    code {
+      background: #edf2f7;
+      border-radius: 4px;
+      padding: 2px 5px;
+    }
+
+    footer {
+      padding: 18px 0 30px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 820px) {
+      .grid,
+      .status {
+        grid-template-columns: 1fr;
+      }
+
+      .proposal {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="topbar">
+        <div>
+          <h1>Vote décentralisé</h1>
+          <p class="subtitle">
+            Interface HTML pour le mini-projet Blockchain : propositions on-chain, un vote par adresse et clôture après deadline.
+          </p>
+        </div>
+        <button id="connectWallet">Connecter MetaMask</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="grid">
+      <div class="card">
+        <h2>Interaction avec le contrat</h2>
+        <p>
+          Ce fichier HTML sert de front-end demandé dans le PDF. Il doit permettre à un utilisateur de se connecter avec MetaMask,
+          lire l'état du smart contract, voter pour une proposition et déclencher les fonctions publiques utiles.
+        </p>
+
+        <label for="contractAddress">Adresse du contrat déployé sur Sepolia</label>
+        <input id="contractAddress" placeholder="0x..." autocomplete="off">
+
+        <div class="actions">
+          <button id="loadContract" class="secondary">Charger les données</button>
+          <button id="closeVoting" class="danger">Fermer le vote</button>
+          <button id="showWinner" class="secondary">Afficher le gagnant</button>
+        </div>
+
+        <div id="message" class="message" role="status" aria-live="polite"></div>
+
+        <div class="status">
+          <div class="metric">
+            <span>Compte connecté</span>
+            <strong id="account">Non connecté</strong>
+          </div>
+          <div class="metric">
+            <span>Réseau attendu</span>
+            <strong>Sepolia</strong>
+          </div>
+          <div class="metric">
+            <span>État du vote</span>
+            <strong id="votingState">Non chargé</strong>
+          </div>
+          <div class="metric">
+            <span>Temps restant</span>
+            <strong id="remainingTime">Non chargé</strong>
+          </div>
+        </div>
+      </div>
+
+      <aside class="card">
+        <h2>Ce qu'on doit voir dans le HTML</h2>
+        <ul>
+          <li>Un bouton de connexion MetaMask.</li>
+          <li>Un champ pour l'adresse du contrat Sepolia.</li>
+          <li>La liste des propositions lues depuis la blockchain.</li>
+          <li>Un bouton de vote par proposition.</li>
+          <li>Les compteurs de votes et le statut ouvert/fermé.</li>
+          <li>Une zone d'erreur ou de confirmation pour les transactions.</li>
+        </ul>
+        <div class="notice">
+          Pour la soutenance, remplacez le champ vide par l'adresse réelle du contrat déployé, puis montrez MetaMask, le vote et la mise à jour des résultats.
+        </div>
+      </aside>
+    </section>
+
+    <section class="card">
+      <h2>Propositions</h2>
+      <div id="proposals" class="proposal-list">
+        <p>Aucune donnée chargée. Connectez MetaMask, saisissez l'adresse du contrat, puis cliquez sur <code>Charger les données</code>.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Explication technique</h2>
+      <p>
+        Le contrat <code>DecentralizedVoting</code> expose les fonctions nécessaires au front :
+        <code>getAllProposals()</code> pour lire les propositions, <code>vote(id)</code> pour voter,
+        <code>isVotingOpen()</code> et <code>getRemainingTime()</code> pour afficher l'état, puis
+        <code>getWinner()</code> et <code>closeVoting()</code> pour la fin du scrutin.
+      </p>
+      <p>
+        Cette page utilise <code>ethers.js</code> depuis un CDN. Elle peut donc être ouverte directement dans un navigateur,
+        mais les transactions réelles nécessitent MetaMask, le réseau Sepolia et l'adresse du contrat déployé.
+      </p>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    Mini-projet S14 - IT University Madagascar - Blockchain.
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
